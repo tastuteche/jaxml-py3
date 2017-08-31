@@ -1,0 +1,7 @@
+*.pyc
+dist/
+build/
+jaxml.egg-info/
+test/CGI_debug.html
+test/sampleHTML.html
+test/sampleXML.xml

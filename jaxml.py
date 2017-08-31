@@ -223,10 +223,16 @@
 # Now xmllib doesn't complain anymore on sampleXML.py output.
 #
 #
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import str
+from builtins import range
+from builtins import object
 import sys
 import os
 import string
-import cStringIO
+import io
 import time
 
 __version__ = "3.02"
@@ -342,9 +348,9 @@ The only difficult things are:
           look at test/test.py to see an example.
 """
 
-class _TAGGED_document :
+class _TAGGED_document(object) :
         """This class defines a tagged document"""
-        class Tag :
+        class Tag(object) :
                 """This class defines a tag
 
                    This is largely inspired from a post in comp.lang.python
@@ -379,19 +385,19 @@ class _TAGGED_document :
                         nsargs = ""
                         lg = len(nsattributes)
                         if (lg > 1) :
-                                raise ValueError, "jaxml: Invalid attributes %s" % str(nsattributes[0])
+                                raise ValueError("jaxml: Invalid attributes %s" % str(nsattributes[0]))
                         elif lg :    
                                 nsattr = nsattributes[0]
                                 try :
-                                        for ns in nsattr.keys() :
+                                        for ns in list(nsattr.keys()) :
                                                 tags = nsattr[ns]
                                                 try :
-                                                        for tag in tags.keys() :        
+                                                        for tag in list(tags.keys()) :        
                                                                 nsargs = nsargs + ' %s%s%s="%s"' % (ns, (ns and ':'), tag, str(tags[tag]))
                                                 except AttributeError :                
                                                         nsargs = nsargs + ' %s="%s"' % (ns, str(tags))
                                 except AttributeError :                        
-                                        raise ValueError, "jaxml: Invalid attributes %s" % str(nsattr)
+                                        raise ValueError("jaxml: Invalid attributes %s" % str(nsattr))
                                         
                         # first, we compute the attributes string
                         # we vonluntarily do the test because of the speed optimisation
@@ -399,7 +405,7 @@ class _TAGGED_document :
                         if attributes :
                                 # interestingly the "reduce" line is much more slower than the "string.join + map" one
                                 # arg = reduce(lambda s,x,a=attributes: '%s %s="%s"' % (s, x, str(a[x])), attributes.keys(), "")
-                                arg = string.join(map(lambda x,a=attributes: ' %s="%s"' % (x, str(a[x])), attributes.keys()), "")
+                                arg = "".join(list(map(lambda x,a=attributes: ' %s="%s"' % (x, str(a[x])), list(attributes.keys()))))
                         else :
                                 arg = ""
 
@@ -452,7 +458,7 @@ class _TAGGED_document :
                 new.__mapping = self.__mapping.copy()
 
                 # copy the "public" ones which are not callable (shouldn't occur anyway)
-                for (key, value) in self.__dict__.items() :
+                for (key, value) in list(self.__dict__.items()) :
                         if (key[:2] == "__") and (key[-2:] == "__") and not callable(getattr(self, key)) :
                                 setattr(new, key, value)
                 return new
@@ -466,9 +472,9 @@ class _TAGGED_document :
                    allows constructs like: mydoc * 3
                 """        
                 if type(number) != type(1) :
-                        raise TypeError, "jaxml.py: __mul__ operation not permitted on these operands."
+                        raise TypeError("jaxml.py: __mul__ operation not permitted on these operands.")
                 if number < 0 :
-                        raise ValueError, "jaxml.py: can't repeat a document a negative number of times."
+                        raise ValueError("jaxml.py: can't repeat a document a negative number of times.")
 
                 if number == 0 :
                         # returns an empty document
@@ -502,21 +508,27 @@ class _TAGGED_document :
 
                    Also allows constructs like: mydoc + "some text"
                 """
-                if (not isinstance(other, _TAGGED_document)) and (type(other) != type("")) :
-                        raise TypeError, "jaxml.py: __add__ operation not permitted on these operands."
+               
+               
+                if (not isinstance(other, _TAGGED_document)) and (type(other) != type("")):
+                        raise TypeError("jaxml.py: __add__ operation not permitted on these operands.")
 
                 # first we make a copy of the original
                 new = self.__copy__()
 
                 # we must also "concatenate" our two template mappings
-                new.__mapping.update(other.__mapping)
+                if isinstance(other, _TAGGED_document):
+                        new.__mapping.update(other.__mapping)
 
                 # then we insert other as a single string of text
                 # skipping the last new line character.
                 # we use the parent class __str__ method to skip
                 # all the leading garbage like XML or HTTP headers.
                 # we should insert it as tags + text instead of plain text...
-                new._text(_TAGGED_document.__str__(other)[:-1])
+                if isinstance(other, _TAGGED_document):
+                        new._text(_TAGGED_document.__str__(other)[:-1])
+                else:
+                        new._text(other)
                 return new
 
         def __radd__(self, other) :
@@ -531,7 +543,7 @@ class _TAGGED_document :
 
                    Also allows constructs like: "some text" + mydoc
                 """
-                return other + self
+                return  self + other
 
         def __coerce__(self, other) :
                 """Try to convert two documents to a common type"""
@@ -562,7 +574,7 @@ class _TAGGED_document :
                 if (name[:2] != "__") :
                         return self.Tag(self, name)
 
-        def __nonzero__(self) :
+        def __bool__(self) :
                 """For truth value testing, returns 1 when the document is not empty"""
                 if self.__page :
                         return 1
@@ -583,7 +595,7 @@ class _TAGGED_document :
 
         def __str__(self) :
                 """returns the document as a string of text"""
-                outstr = cStringIO.StringIO()
+                outstr = io.StringIO()
                 indentation = ""
                 lgindent = len(self.__indentstring)
                 lastopened = None
@@ -593,7 +605,9 @@ class _TAGGED_document :
                                 if text != lastopened :         # normal case
                                         outstr.write("%s</%s>\n" % (indentation, text))
                                 else :                  # noting enclosed
-                                        outstr.seek(-2, 1)
+                                        #outstr.seek(-2, 1)
+                                        pos = int(outstr.tell()) - 2
+                                        outstr.seek(pos, 0)
                                         outstr.write(" />\n")
                                 lastopened = None
                         elif offset == 1 :      # opening tag
@@ -612,8 +626,8 @@ class _TAGGED_document :
                 # This may prove to be useful for replacing chars with their
                 # equivalent SGML entities for example, or for templating
                 # without a template file.
-                for (key, value) in self.__mapping.items() :
-                        retval = string.replace(retval, key, value)
+                for (key, value) in list(self.__mapping.items()) :
+                        retval = retval.replace( key, value)
                 return retval
 
         def __repr__(self) :
@@ -668,7 +682,7 @@ class _TAGGED_document :
                                         index = self.__pusheddict[name]
                                         del self.__pusheddict[name]
                                 except KeyError :        
-                                        raise KeyError, "jaxml named position %s doesn't exist" % name
+                                        raise KeyError("jaxml named position %s doesn't exist" % name)
                         else :
                                 index = maxindex
                         while maxindex >= index :
@@ -709,7 +723,7 @@ class _TAGGED_document :
                         self.__mapping.update(newmap)
                         return self.__mapping
                 else :
-                        raise TypeError, "jaxml.py: _updatemapping's parameter must be a Python mapping object."
+                        raise TypeError("jaxml.py: _updatemapping's parameter must be a Python mapping object.")
 
         def _output(self, file = "-") :
                 """Ouput the page, with indentation.
@@ -783,23 +797,24 @@ class XML_document(_TAGGED_document) :
                 """
                 import regex
 
-                container = regex.compile('\(<!-- \)?##\([-_A-Za-z0-9]+\)##\( -->\)?')
+                container = regex.compile('(<!-- )?##([-_A-Za-z0-9]+)##( -->)?')
                 for line in lines:
-                        while container.search(line) != -1:
+                        while container.search(line) != None:
+                                m = container.search(line)
                                 try:
-                                        replacement = str(vars[container.group(2)])
+                                        replacement = str(vars[m.group(2)])
                                 except KeyError:
-                                        replacement = str('<!-- Unmatched variable: ' + container.group(2) + ' -->')
+                                        replacement = str('<!-- Unmatched variable: ' + m.group(2) + ' -->')
 
-                                pre = line[:container.regs[0][0]]
-                                post = line[container.regs[0][1]:]
-                                if string.strip(pre) == '':
+                                pre = line[:m.regs[0][0]]
+                                post = line[m.regs[0][1]:]
+                                if pre.strip() == '':
                                         # pre is just whitespace, so pad our replacement's lines with that space
-                                        lines = string.split(replacement, '\n')
-                                        new = [lines[0]]
-                                        for l in lines[1:]:
+                                        lines1 = replacement.split('\n')
+                                        new = [lines1[0]]
+                                        for l in lines1[1:]:
                                                 new.append(pre + l)
-                                        replacement = string.join(new, '\n')
+                                        replacement = '\n'.join(new)
                                 line = "%s%s%s" % (pre, replacement, post)
                         self._text(line)
 
@@ -839,10 +854,10 @@ class XML_document(_TAGGED_document) :
                                 inf = sys.stdin
                 else :
                         inf = file
-                lines = map(lambda l: l[:-1], inf.readlines())
+                lines = [l[:-1] for l in inf.readlines()]
                 if inf != sys.stdin :
                         inf.close()
-                apply(self.__subst_lines, (lines,), vars)
+                self.__subst_lines(*(lines,), **vars)
 
 class HTML_document(XML_document) :
         """This class defines a useful method to output a default header,
@@ -862,7 +877,7 @@ class HTML_document(XML_document) :
                 self._push()
                 self.head()
                 self.title(title)
-                for mod in modifiers.keys() :
+                for mod in list(modifiers.keys()) :
                         if modifiers[mod] != None :
                                 self._push()
                                 self.meta(name = string.upper(mod), content = modifiers[mod])
@@ -874,78 +889,78 @@ class HTML_document(XML_document) :
         #
         def __fake_input(self, _text_ = None, **args) :
                 self._push()
-                retcode = apply(self.input, (None, ), args)
+                retcode = self.input(*(None, ), **args)
                 self._pop()
                 return retcode
 
         def _submit(self, **args) :
                 """Submit button input type, beware of the leading underscore"""
                 args["type"] = "submit"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _reset(self, **args) :
                 """Reset button input type, beware of the leading underscore"""
                 args["type"] = "reset"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _radio(self, **args) :
                 """Radio button input type, beware of the leading underscore"""
                 args["type"] = "radio"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _checkbox(self, **args) :
                 """Checkbox input type, beware of the leading underscore"""
                 args["type"] = "checkbox"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _password(self, **args) :
                 """Password input type, beware of the leading underscore"""
                 args["type"] = "password"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _hidden(self, **args) :
                 """Hidden input type, beware of the leading underscore"""
                 args["type"] = "hidden"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _textinput(self, **args) :
                 """Text input type, beware of the leading underscore and the trailing 'input'"""
                 args["type"] = "text"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _button(self, **args) :
                 """Button input type, beware of the leading underscore"""
                 args["type"] = "button"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _file(self, **args) :
                 """File input type, beware of the leading underscore"""
                 args["type"] = "file"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _image(self, **args) :
                 """Image input type, beware of the leading underscore"""
                 args["type"] = "image"
-                return apply(self.__fake_input, (None, ), args)
+                return self.__fake_input(*(None, ), **args)
 
         def _meta(self, **args) :
                 """The META tag, beware of the leading underscore"""
                 self._push()
-                retcode = apply(self.meta, (None, ), args)
+                retcode = self.meta(*(None, ), **args)
                 self._pop()
                 return retcode
 
         def _br(self, **args) :
                 """The BR tag, beware of the leading underscore"""
                 self._push()
-                retcode = apply(self.br, (None, ), args)
+                retcode = self.br(*(None, ), **args)
                 self._pop()
                 return retcode
 
         def _hr(self, **args) :
                 """The HR tag, beware of the leading underscore"""
                 self._push()
-                retcode = apply(self.hr, (None, ), args)
+                retcode = self.hr(*(None, ), **args)
                 self._pop()
                 return retcode
 
@@ -962,8 +977,8 @@ class CGI_document(HTML_document) :
         Initialise local datas.
         """
         HTML_document.__init__(self)
-        for key in self.__possibleargs.keys() :
-                if args.has_key(key) :
+        for key in list(self.__possibleargs.keys()) :
+                if key in args :
                         value = args[key]
                 else :
                         value = self.__possibleargs[key]
@@ -1046,7 +1061,7 @@ class CGI_document(HTML_document) :
 
     def _envvar(self, varname) :
         """Returns the variable value or None."""
-        if os.environ.has_key(varname) :
+        if varname in os.environ :
                 return os.environ[varname]
 
     def _server_software(self) :
@@ -1152,7 +1167,7 @@ class CGI_document(HTML_document) :
         if self.__debug_file__ :
                 HTML_document._output(self, self.__debug_file__)
 
-class Html_document :
+class Html_document(object) :
         """This class warns the programmer when used, and exits the program.
            This is done to say that the jahtml module is now obsolete"""
         def __init__(self) :

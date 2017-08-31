@@ -13,13 +13,15 @@
 # $Id: test.py,v 1.13 2003/02/13 14:36:13 jerome Exp $
 #
 
+from __future__ import print_function
+from builtins import str
 import sys
 
 # import the jaxml module from the parent directory
 sys.path.insert(0, "..")
 import jaxml
 
-print "\n\n==== TESTING XML ====\n"
+print("\n\n==== TESTING XML ====\n")
 # now we create an instance
 # we may optionally pass a version and an encoding arguments.
 x = jaxml.XML_document()
@@ -75,33 +77,33 @@ x.attributetag(content = "I've got nothing enclosed in me", index = 9)
 x._output("sampleXML.xml")
 
 # but we may as well output it to the screen
-print x
+print(x)
 
 # test the new templating facility
 # I urge you to read the following lines and look carefully at the result
 # to see how this beautiful thing works !
 x._text("Now we will replace some content with the new possibility of using a document as a mapping.")
 x._text("This may be useful for templating without a template file, or replacing some chars with their equivalent SGML entities for example:")
-x._text("Here are three accented characters, two of them which will be replaced\nwith their equivalent SGML entities: ΰιθ")
+x._text("Here are three accented characters, two of them which will be replaced\nwith their equivalent SGML entities: Γ Γ©Γ¨")
 x["nothing enclosed"] = "something enclosed"
 x["SGML"] = "XML"
 x["attributetag"] = "modifiedattributename"
-x["ι"] = "&eacute;";
-x["θ"] = "&egrave;";
-x["ΰ"] = "&agrave;";
+x["Γ©"] = "&eacute;";
+x["Γ¨"] = "&egrave;";
+x["Γ "] = "&agrave;";
 
 # this is also available as readable attributes
-sys.stderr.write('x["θ"] = %s\n' % x["θ"])
+sys.stderr.write('x["Γ¨"] = %s\n' % x["Γ¨"])
 
 # and we can also delete them
-del x["θ"]
+del x["Γ¨"]
 
 # or use the str() or repr() builtin functions
 mydoc = "With str() or repr(), my modified document looks like:\n" + str(x) + "And that's all folks !"
-print mydoc
+print(mydoc)
 
 # Now we want to test the HTML output
-print "\n\n==== TESTING HTML ====\n"
+print("\n\n==== TESTING HTML ====\n")
 page = jaxml.HTML_document()
 
 # here we begin our html document
@@ -183,7 +185,7 @@ page._output()
 page._output("sampleHTML.html")
 
 # Now we want to test the CGI/HTML output
-print "\n\n==== TESTING CGI ====\n"
+print("\n\n==== TESTING CGI ====\n")
 
 # just some dummy values
 page = jaxml.CGI_document(encoding = "utf-8", content_type="text/html", version = "3.0")
@@ -259,13 +261,13 @@ page._set_debug("CGI_debug.html")
 page._output("")
 
 # Now we want to test the arithmetic operations
-print "\n\n==== TESTING ARITHMETIC ====\n"
+print("\n\n==== TESTING ARITHMETIC ====\n")
 
-print "page + page = %s" % (page + page)
-print "page + 'string' = %s" % (page + 'string')
-print "'string' + page = %s" % ('string' + page)
-print "page * 2 = %s" % (page * 2)
-print "2 * page = %s" % (2 * page)
+print("page + page = %s" % (page + page))
+print("page + 'string' = %s" % (page + 'string'))
+print("'string' + page = %s" % ('string' + page))
+print("page * 2 = %s" % (page * 2))
+print("2 * page = %s" % (2 * page))
 
 # new name spaces support
 x = jaxml.XML_document()
@@ -290,4 +292,4 @@ x._text("blah")
 x._pop("save")
 x.outside(attrib="None")
            
-print x
+print(x)
